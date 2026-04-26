@@ -5,7 +5,23 @@
  */
 
 // Configurações do banco de dados
-define('DB_PATH', __DIR__ . '/data/portal.db');
+define('BASE_DIR', __DIR__);
+define('DATA_DIR', BASE_DIR . '/data');
+define('DB_PATH', DATA_DIR . '/portal.db');
+
+// Garantir que o diretório existe com permissões corretas
+if (!file_exists(DATA_DIR)) {
+    mkdir(DATA_DIR, 0777, true);
+}
+
+// Garantir que o arquivo DB existe e tem permissões corretas
+if (!file_exists(DB_PATH)) {
+    touch(DB_PATH);
+    chmod(DB_PATH, 0666);
+} else {
+    // Sempre garantir permissões mesmo se já existir
+    chmod(DB_PATH, 0666);
+}
 
 // Fontes de notícias (RSS Feeds)
 $news_sources = [
