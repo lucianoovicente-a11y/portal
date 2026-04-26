@@ -1,320 +1,333 @@
 <?php
 /**
- * Mega Portal de Notícias - PHP Puro + SQLite
- * Sistema de agregação automática de notícias
+ * Configuração do Mega Portal de Notícias
+ * Banco de dados SQLite e funções auxiliares
  */
 
 // Configurações do banco de dados
-define('DB_PATH', __DIR__ . '/data/news.db');
+define('DB_PATH', __DIR__ . '/data/portal.db');
 
 // Fontes de notícias (RSS Feeds)
 $news_sources = [
-    'G1' => 'https://g1.globo.com/rss/g1/',
-    'UOL Notícias' => 'https://rss.uol.com.br/feed/noticias.xml',
-    'R7' => 'https://feeds.r7.com.br/r7-com-br-geral',
-    'Terra' => 'https://www.terra.com.br/rss/noticias/',
-    'BBC Brasil' => 'https://feeds.bbci.co.uk/portuguese/rss.xml',
-    'CNN Brasil' => 'https://www.cnnbrasil.com.br/feed/',
-    'Estadão' => 'https://feeds.estadao.com.br/estadao/internacional',
-    'Folha de S.Paulo' => 'https://rss.folha.uol.com.br/emcimadahora/rss.xml',
-    'O Globo' => 'https://oglobo.globo.com/rss/oglobo/',
-    'Reuters' => 'https://feeds.reuters.com/reuters/topNews'
+    [
+        'name' => 'G1 - Últimas Notícias',
+        'url' => 'https://g1.globo.com/rss/g1/',
+        'category' => 'Geral'
+    ],
+    [
+        'name' => 'UOL Notícias',
+        'url' => 'https://noticias.uol.com.br/rss/ultimas.xml',
+        'category' => 'Geral'
+    ],
+    [
+        'name' => 'R7 Notícias',
+        'url' => 'https://www.r7.com/rss/noticias',
+        'category' => 'Geral'
+    ],
+    [
+        'name' => 'Terra Notícias',
+        'url' => 'https://www.terra.com.br/rss/noticias/',
+        'category' => 'Geral'
+    ],
+    [
+        'name' => 'BBC News Brasil',
+        'url' => 'https://feeds.bbci.co.uk/portuguese/rss.xml',
+        'category' => 'Internacional'
+    ],
+    [
+        'name' => 'CNN Brasil',
+        'url' => 'https://www.cnnbrasil.com.br/feed/',
+        'category' => 'Geral'
+    ],
+    [
+        'name' => 'Estadão',
+        'url' => 'https://feeds.estadao.com.br/estadao/rss/home',
+        'category' => 'Geral'
+    ],
+    [
+        'name' => 'Folha de S.Paulo',
+        'url' => 'https://www1.folha.uol.com.br/rss/emcimadahora.xml',
+        'category' => 'Geral'
+    ],
+    [
+        'name' => 'O Globo',
+        'url' => 'https://oglobo.globo.com/rss/oglobo/',
+        'category' => 'Geral'
+    ],
+    [
+        'name' => 'Reuters Brasil',
+        'url' => 'https://www.reutersagency.com/feed/?best-topics=news&post_type=best',
+        'category' => 'Internacional'
+    ]
 ];
 
-// Criar diretório de dados se não existir
-if (!file_exists(__DIR__ . '/data')) {
-    mkdir(__DIR__ . '/data', 0755, true);
-}
+// Configurações gerais
+define('SITE_NAME', 'Mega Portal de Notícias');
+define('NEWS_PER_PAGE', 20);
+define('CACHE_TIME', 300); // 5 minutos em segundos
 
-// Conectar ao SQLite
-function getDB() {
+/**
+ * Conectar ao banco de dados SQLite
+ */
+function getDbConnection() {
     try {
         $db = new PDO('sqlite:' . DB_PATH);
         $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
         return $db;
     } catch (PDOException $e) {
-        die("Erro na conexão: " . $e->getMessage());
+        die("Erro na conexão com o banco de dados: " . $e->getMessage());
     }
 }
 
-// Inicializar banco de dados
-function initDatabase($db) {
-    $db->exec("
-        CREATE TABLE IF NOT EXISTS sources (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT UNIQUE NOT NULL,
-            url TEXT NOT NULL,
-            active INTEGER DEFAULT 1,
-            last_update DATETIME
-        )
-    ");
-
+/**
+ * Inicializar o banco de dados
+ */
+function initializeDatabase() {
+    $db = getDbConnection();
+    
+    // Criar tabela de notícias
     $db->exec("
         CREATE TABLE IF NOT EXISTS news (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             title TEXT NOT NULL,
             description TEXT,
-            content TEXT,
             link TEXT UNIQUE NOT NULL,
-            image_url TEXT,
-            source_id INTEGER,
+            pub_date DATETIME,
+            source_name TEXT,
+            source_url TEXT,
             category TEXT,
-            published_at DATETIME,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (source_id) REFERENCES sources(id)
+            image_url TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     ");
-
-    $db->exec("
-        CREATE TABLE IF NOT EXISTS categories (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT UNIQUE NOT NULL
-        )
-    ");
-
-    // Índices para performance
-    $db->exec("CREATE INDEX IF NOT EXISTS idx_news_source ON news(source_id)");
-    $db->exec("CREATE INDEX IF NOT EXISTS idx_news_published ON news(published_at DESC)");
+    
+    // Criar índice para busca
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_news_pub_date ON news(pub_date DESC)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_news_source ON news(source_name)");
     $db->exec("CREATE INDEX IF NOT EXISTS idx_news_category ON news(category)");
 }
 
-// Parse RSS Feed
-function parseRSSFeed($url) {
+/**
+ * Extrair imagem do conteúdo ou descrição
+ */
+function extractImage($content) {
+    $patterns = [
+        '/<img[^>]+src="([^"]+)"/i',
+        '/<meta property="og:image" content="([^"]+)"/i',
+        '/url\(([^)]+)\)/i'
+    ];
+    
+    foreach ($patterns as $pattern) {
+        if (preg_match($pattern, $content, $matches)) {
+            return trim($matches[1]);
+        }
+    }
+    
+    return null;
+}
+
+/**
+ * Buscar e processar feed RSS
+ */
+function fetchFeed($source) {
+    $rss = @file_get_contents($source['url']);
+    
+    if (!$rss) {
+        return [];
+    }
+    
+    libxml_use_internal_errors(true);
+    $xml = simplexml_load_string($rss);
+    libxml_clear_errors();
+    
+    if (!$xml) {
+        return [];
+    }
+    
     $items = [];
     
-    try {
-        $xml = @simplexml_load_file($url);
+    // Suporte para diferentes formatos RSS
+    $channel = isset($xml->channel) ? $xml->channel : $xml;
+    $entries = isset($channel->item) ? $channel->item : (isset($channel->entry) ? $channel->entry : []);
+    
+    foreach ($entries as $item) {
+        $title = (string)($item->title ?? '');
+        $link = (string)($item->link ?? '');
         
-        if (!$xml) {
-            return $items;
+        // Lidar com links complexos
+        if (is_object($link) && isset($link['href'])) {
+            $link = (string)$link['href'];
+        } elseif (is_array($link)) {
+            $link = $link[0] ?? '';
         }
-
-        $channel = $xml->channel;
         
-        if (!$channel) {
-            return $items;
+        $description = (string)($item->description ?? $item->summary ?? '');
+        $pubDate = (string)($item->pubDate ?? $item->published ?? date('r'));
+        
+        // Tentar extrair imagem
+        $imageUrl = null;
+        
+        // Verificar media:content
+        if (isset($item->children('media', true)->content)) {
+            $media = $item->children('media', true)->content;
+            $imageUrl = (string)$media['url'];
         }
-
-        foreach ($channel->item as $item) {
-            $news_item = [
-                'title' => (string)$item->title,
-                'description' => (string)$item->description,
-                'link' => (string)$item->link,
-                'published_at' => isset($item->pubDate) ? (string)$item->pubDate : date('Y-m-d H:i:s'),
-                'content' => '',
-                'image_url' => ''
-            ];
-
-            // Tentar extrair conteúdo
-            $namespaces = $item->getNamespaces(true);
-            
-            if (isset($namespaces['content'])) {
-                $content = $item->children($namespaces['content']);
-                $news_item['content'] = (string)$content->encoded;
-            }
-
-            if (isset($namespaces['media'])) {
-                $media = $item->children($namespaces['media']);
-                if (isset($media->content)) {
-                    $attributes = $media->content->attributes();
-                    $news_item['image_url'] = (string)$attributes['url'];
-                } elseif (isset($media->thumbnail)) {
-                    $attributes = $media->thumbnail->attributes();
-                    $news_item['image_url'] = (string)$attributes['url'];
-                }
-            }
-
-            // Tentar encontrar imagem no description
-            if (empty($news_item['image_url']) && preg_match('/<img[^>]+src="([^"]+)"/', $news_item['description'], $matches)) {
-                $news_item['image_url'] = $matches[1];
-            }
-
-            // Limpar HTML do description
-            $news_item['description'] = strip_tags($news_item['description']);
-            
-            $items[] = $news_item;
+        
+        // Verificar enclosure
+        if (!$imageUrl && isset($item->enclosure)) {
+            $imageUrl = (string)$item->enclosure['url'];
         }
-    } catch (Exception $e) {
-        error_log("Erro ao parsear feed $url: " . $e->getMessage());
+        
+        // Extrair do conteúdo se não encontrou
+        if (!$imageUrl && !empty($description)) {
+            $imageUrl = extractImage($description);
+        }
+        
+        // Converter data
+        $timestamp = strtotime($pubDate);
+        if ($timestamp === false) {
+            $timestamp = time();
+        }
+        
+        $items[] = [
+            'title' => strip_tags($title),
+            'description' => strip_tags($description),
+            'link' => $link,
+            'pub_date' => date('Y-m-d H:i:s', $timestamp),
+            'source_name' => $source['name'],
+            'source_url' => $source['url'],
+            'category' => $source['category'],
+            'image_url' => $imageUrl
+        ];
     }
-
+    
     return $items;
 }
 
-// Salvar fonte no banco
-function saveSource($db, $name, $url) {
-    try {
-        $stmt = $db->prepare("INSERT OR IGNORE INTO sources (name, url) VALUES (:name, :url)");
-        $stmt->execute([':name' => $name, ':url' => $url]);
-        
-        $stmt = $db->prepare("UPDATE sources SET last_update = CURRENT_TIMESTAMP WHERE name = :name");
-        $stmt->execute([':name' => $name]);
-        
-        return $db->lastInsertId();
-    } catch (PDOException $e) {
-        error_log("Erro ao salvar fonte: " . $e->getMessage());
-        return false;
-    }
-}
-
-// Salvar notícia no banco
-function saveNews($db, $news, $source_id) {
-    try {
-        $stmt = $db->prepare("
-            INSERT OR IGNORE INTO news 
-            (title, description, content, link, image_url, source_id, published_at) 
-            VALUES (:title, :description, :content, :link, :image_url, :source_id, :published_at)
-        ");
-        
+/**
+ * Salvar notícias no banco de dados
+ */
+function saveNews($items) {
+    $db = getDbConnection();
+    $count = 0;
+    
+    $stmt = $db->prepare("
+        INSERT OR IGNORE INTO news (title, description, link, pub_date, source_name, source_url, category, image_url)
+        VALUES (:title, :description, :link, :pub_date, :source_name, :source_url, :category, :image_url)
+    ");
+    
+    foreach ($items as $item) {
         $stmt->execute([
-            ':title' => $news['title'],
-            ':description' => substr($news['description'], 0, 500),
-            ':content' => $news['content'],
-            ':link' => $news['link'],
-            ':image_url' => $news['image_url'],
-            ':source_id' => $source_id,
-            ':published_at' => date('Y-m-d H:i:s', strtotime($news['published_at']))
+            ':title' => $item['title'],
+            ':description' => $item['description'],
+            ':link' => $item['link'],
+            ':pub_date' => $item['pub_date'],
+            ':source_name' => $item['source_name'],
+            ':source_url' => $item['source_url'],
+            ':category' => $item['category'],
+            ':image_url' => $item['image_url']
         ]);
         
-        return $db->lastInsertId();
-    } catch (PDOException $e) {
-        error_log("Erro ao salvar notícia: " . $e->getMessage());
-        return false;
-    }
-}
-
-// Atualizar todas as fontes
-function updateAllFeeds($db, $sources) {
-    $total_news = 0;
-    
-    foreach ($sources as $name => $url) {
-        echo "Atualizando: $name...\n";
-        
-        $source_id = saveSource($db, $name, $url);
-        
-        if (!$source_id) {
-            $stmt = $db->prepare("SELECT id FROM sources WHERE name = :name");
-            $stmt->execute([':name' => $name]);
-            $source_id = $stmt->fetchColumn();
+        if ($stmt->rowCount() > 0) {
+            $count++;
         }
-        
-        $items = parseRSSFeed($url);
-        
-        foreach ($items as $item) {
-            if (saveNews($db, $item, $source_id)) {
-                $total_news++;
-            }
-        }
-        
-        echo "  -> " . count($items) . " notícias encontradas\n";
     }
     
-    return $total_news;
+    return $count;
 }
 
-// Buscar notícias do banco
-function getNews($db, $limit = 20, $offset = 0, $source_id = null, $category = null) {
-    $sql = "
-        SELECT n.*, s.name as source_name, s.url as source_url
-        FROM news n
-        JOIN sources s ON n.source_id = s.id
-        WHERE 1=1
-    ";
+/**
+ * Obter notícias do banco de dados
+ */
+function getNews($page = 1, $limit = NEWS_PER_PAGE, $source = null, $search = null) {
+    $db = getDbConnection();
+    $offset = ($page - 1) * $limit;
     
+    $where = [];
     $params = [];
     
-    if ($source_id) {
-        $sql .= " AND n.source_id = :source_id";
-        $params[':source_id'] = $source_id;
+    if ($source) {
+        $where[] = "source_name = :source";
+        $params[':source'] = $source;
     }
     
-    if ($category) {
-        $sql .= " AND n.category = :category";
-        $params[':category'] = $category;
+    if ($search) {
+        $where[] = "(title LIKE :search OR description LIKE :search)";
+        $params[':search'] = '%' . $search . '%';
     }
     
-    $sql .= " ORDER BY n.published_at DESC LIMIT :limit OFFSET :offset";
+    $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
     
+    $sql = "SELECT * FROM news $whereClause ORDER BY pub_date DESC LIMIT :limit OFFSET :offset";
     $stmt = $db->prepare($sql);
     
     foreach ($params as $key => $value) {
         $stmt->bindValue($key, $value);
     }
     
-    $stmt->bindValue(':limit', (int)$limit, PDO::PARAM_INT);
-    $stmt->bindValue(':offset', (int)$offset, PDO::PARAM_INT);
+    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
     
     $stmt->execute();
-    
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    return $stmt->fetchAll();
 }
 
-// Buscar todas as fontes
-function getSources($db, $active_only = true) {
-    $sql = "SELECT * FROM sources";
+/**
+ * Contar total de notícias
+ */
+function countNews($source = null, $search = null) {
+    $db = getDbConnection();
     
-    if ($active_only) {
-        $sql .= " WHERE active = 1";
+    $where = [];
+    $params = [];
+    
+    if ($source) {
+        $where[] = "source_name = :source";
+        $params[':source'] = $source;
     }
     
-    $sql .= " ORDER BY name";
-    
-    $stmt = $db->query($sql);
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
-}
-
-// Contar total de notícias
-function countNews($db, $source_id = null) {
-    $sql = "SELECT COUNT(*) FROM news WHERE 1=1";
-    
-    if ($source_id) {
-        $sql .= " AND source_id = :source_id";
+    if ($search) {
+        $where[] = "(title LIKE :search OR description LIKE :search)";
+        $params[':search'] = '%' . $search . '%';
     }
     
+    $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+    
+    $sql = "SELECT COUNT(*) as total FROM news $whereClause";
     $stmt = $db->prepare($sql);
     
-    if ($source_id) {
-        $stmt->execute([':source_id' => $source_id]);
-    } else {
-        $stmt->execute();
+    foreach ($params as $key => $value) {
+        $stmt->bindValue($key, $value);
     }
     
-    return $stmt->fetchColumn();
+    $stmt->execute();
+    $result = $stmt->fetch();
+    
+    return (int)$result['total'];
 }
 
-// Função para formatação de data
-function formatDate($date) {
-    $timestamp = strtotime($date);
-    $diff = time() - $timestamp;
-    
-    if ($diff < 60) {
-        return 'Agora mesmo';
-    } elseif ($diff < 3600) {
-        $minutes = floor($diff / 60);
-        return "Há $minutes minuto(s)";
-    } elseif ($diff < 86400) {
-        $hours = floor($diff / 3600);
-        return "Há $hours hora(s)";
-    } elseif ($diff < 604800) {
-        $days = floor($diff / 86400);
-        return "Há $days dia(s)";
-    } else {
-        return date('d/m/Y H:i', $timestamp);
-    }
+/**
+ * Obter todas as fontes únicas
+ */
+function getSources() {
+    $db = getDbConnection();
+    $stmt = $db->query("SELECT DISTINCT source_name, category FROM news ORDER BY source_name");
+    return $stmt->fetchAll();
 }
 
-// Se executado diretamente, atualiza os feeds
-if (php_sapi_name() === 'cli' && isset($argv[0]) && basename($argv[0]) === 'update_feeds.php') {
-    echo "=== Mega Portal de Notícias ===\n";
-    echo "Iniciando atualização dos feeds...\n\n";
+/**
+ * Limpar notícias antigas (opcional)
+ */
+function cleanOldNews($days = 30) {
+    $db = getDbConnection();
+    $cutoff = date('Y-m-d H:i:s', strtotime("-$days days"));
     
-    $db = getDB();
-    initDatabase($db);
+    $stmt = $db->prepare("DELETE FROM news WHERE pub_date < :cutoff");
+    $stmt->execute([':cutoff' => $cutoff]);
     
-    $total = updateAllFeeds($db, $news_sources);
-    
-    echo "\n=== Atualização concluída ===\n";
-    echo "Total de notícias processadas: $total\n";
-    echo "Data: " . date('d/m/Y H:i:s') . "\n";
+    return $stmt->rowCount();
 }
+
+// Inicializar banco de dados ao carregar a config
+initializeDatabase();
