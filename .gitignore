@@ -1,72 +1,33 @@
-```
-# Dependencies
-node_modules/
-vendor/
-
-# Logs and temp files
-*.log
-*.tmp
-*.swp
-
-# Environment
-.env
-.env.local
-*.env.*
-
-# Editors
-.vscode/
-.idea/
-
-# OS generated files
-.DS_Store
-Thumbs.db
-
-# Build artifacts
-dist/
-build/
-target/
 *.pyc
 __pycache__/
-*.class
-*.o
-*.obj
+*.log
+.env
+.env.local
+.vscode/
+.idea/
+node_modules/
+venv/
+.venv/
+dist/
+build/
+*.tmp
+*.swp
+*.swo
+*.out
 *.exe
 *.dll
 *.so
 *.a
-*.out
-
-# Coverage reports
+*.class
+.mypy_cache/
+.pytest_cache/
+target/
+.gradle/
 coverage/
 htmlcov/
-.coverage
-
-# Package managers
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Python
-*.pyc
-__pycache__/
-.pytest_cache/
-.mypy_cache/
-.venv/
-venv/
-*.egg-info/
-
-# Node.js
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# PHP specific
-*.phar
-vendor/composer/
-composer.lock
-
-# Compression files
+*.env.*
+.DS_Store
+Thumbs.db
 *.zip
 *.gz
 *.tar
@@ -89,4 +50,3 @@ composer.lock
 *.tar.bz2
 *.tar.xz
 *.tar.zst
-```
