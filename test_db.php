@@ -1,77 +1,77 @@
 <?php
 // Script de teste do banco de dados
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
+$dbDir = __DIR__ . '/data';
+$dbFile = $dbDir . '/portal.db';
 
 echo "<h2>Teste de Conexão SQLite</h2>";
+echo "<p><strong>Caminho do diretório:</strong> " . $dbDir . "</p>";
+echo "<p><strong>Caminho do arquivo:</strong> " . $dbFile . "</p>";
 
-$base_dir = __DIR__;
-$data_dir = $base_dir . '/data';
-$db_file = $data_dir . '/portal.db';
-
-echo "<p><strong>Diretório Base:</strong> $base_dir</p>";
-echo "<p><strong>Diretório Data:</strong> $data_dir</p>";
-echo "<p><strong>Arquivo DB:</strong> $db_file</p>";
-
-// Verificar diretório
-if (!file_exists($data_dir)) {
-    echo "<p style='color:red'>❌ Diretório data não existe!</p>";
-    if (mkdir($data_dir, 0777, true)) {
+// Verifica se o diretório existe
+if (!is_dir($dbDir)) {
+    echo "<p style='color:red'>❌ ERRO: Diretório não existe!</p>";
+    echo "<p>Tentando criar...</p>";
+    if (mkdir($dbDir, 0777, true)) {
         echo "<p style='color:green'>✅ Diretório criado com sucesso!</p>";
     } else {
-        echo "<p style='color:red'>❌ Falha ao criar diretório!</p>";
+        echo "<p style='color:red'>❌ Falha ao criar diretório. Verifique as permissões.</p>";
+        exit;
     }
 } else {
-    echo "<p style='color:green'>✅ Diretório existe</p>";
-    echo "<p><strong>Permissões do diretório:</strong> " . substr(sprintf('%o', fileperms($data_dir)), -4) . "</p>";
+    echo "<p style='color:green'>✅ Diretório existe.</p>";
 }
 
-// Verificar arquivo
-if (!file_exists($db_file)) {
-    echo "<p style='color:orange'>⚠️ Arquivo DB não existe, criando...</p>";
-    if (touch($db_file)) {
-        echo "<p style='color:green'>✅ Arquivo criado!</p>";
+// Verifica permissão de escrita no diretório
+if (is_writable($dbDir)) {
+    echo "<p style='color:green'>✅ Diretório tem permissão de escrita.</p>";
+} else {
+    echo "<p style='color:red'>❌ Diretório NÃO tem permissão de escrita!</p>";
+}
+
+// Verifica se o arquivo existe
+if (!file_exists($dbFile)) {
+    echo "<p>Arquivo não existe. Tentando criar...</p>";
+    if (touch($dbFile)) {
+        chmod($dbFile, 0666);
+        echo "<p style='color:green'>✅ Arquivo criado com sucesso!</p>";
     } else {
         echo "<p style='color:red'>❌ Falha ao criar arquivo!</p>";
+        exit;
     }
 } else {
-    echo "<p style='color:green'>✅ Arquivo DB existe</p>";
-    echo "<p><strong>Permissões do arquivo:</strong> " . substr(sprintf('%o', fileperms($db_file)), -4) . "</p>";
+    echo "<p style='color:green'>✅ Arquivo existe.</p>";
 }
 
-// Tentar definir permissões
-@chmod($data_dir, 0777);
-@chmod($db_file, 0666);
+// Verifica permissão de escrita no arquivo
+if (is_writable($dbFile)) {
+    echo "<p style='color:green'>✅ Arquivo tem permissão de escrita.</p>";
+} else {
+    echo "<p style='color:red'>❌ Arquivo NÃO tem permissão de escrita!</p>";
+}
 
-echo "<p><strong>Permissões após chmod:</strong></p>";
-echo "<ul>";
-echo "<li>Diretório: " . substr(sprintf('%o', fileperms($data_dir)), -4) . "</li>";
-echo "<li>Arquivo: " . substr(sprintf('%o', fileperms($db_file)), -4) . "</li>";
-echo "</ul>";
-
-// Testar conexão
-echo "<h3>Testando Conexão...</h3>";
+// Tenta conectar
+echo "<hr><p>Tentando conectar ao banco de dados...</p>";
 try {
-    $db = new PDO("sqlite:" . $db_file);
-    $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    echo "<p style='color:green'>✅ Conexão bem-sucedida!</p>";
+    $pdo = new PDO("sqlite:" . $dbFile);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     
-    // Criar tabela de teste
-    $db->exec("CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY, msg TEXT)");
-    echo "<p style='color:green'>✅ Tabela criada!</p>";
+    // Testa criação de tabela
+    $pdo->exec("CREATE TABLE IF NOT EXISTS test_table (id INTEGER PRIMARY KEY, name TEXT)");
+    $pdo->exec("INSERT INTO test_table (name) VALUES ('teste')");
+    $result = $pdo->query("SELECT * FROM test_table")->fetchAll();
     
-    // Inserir dado de teste
-    $db->exec("INSERT INTO test (msg) VALUES ('Teste OK')");
-    echo "<p style='color:green'>✅ Dados inseridos!</p>";
+    echo "<p style='color:green'><strong>✅ SUCESSO! Conexão estabelecida e testes passaram!</strong></p>";
+    echo "<p>Dados de teste inseridos: " . count($result) . " registro(s)</p>";
     
-    // Ler dado de teste
-    $result = $db->query("SELECT * FROM test")->fetchAll();
-    echo "<p style='color:green'>✅ Dados lidos: " . count($result) . " registro(s)</p>";
+    // Limpa tabela de teste
+    $pdo->exec("DROP TABLE test_table");
     
 } catch (PDOException $e) {
-    echo "<p style='color:red'>❌ Erro na conexão: " . $e->getMessage() . "</p>";
+    echo "<p style='color:red'><strong>❌ ERRO NA CONEXÃO:</strong></p>";
+    echo "<p>" . htmlspecialchars($e->getMessage()) . "</p>";
     echo "<p><strong>Código do erro:</strong> " . $e->getCode() . "</p>";
 }
 
-echo "<hr>";
-echo "<p><a href='index.php'>Voltar ao Portal</a></p>";
+echo "<hr><p><em>Permissões atuais:</em></p>";
+echo "<pre>" . shell_exec("ls -la " . escapeshellarg($dbDir)) . "</pre>";
+?>
