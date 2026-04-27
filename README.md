@@ -1,235 +1,148 @@
-# 📰 Mega Portal de Notícias
+# Mega Portal de Notícias
 
-Portal de notícias automático em **PHP Puro** com banco de dados **SQLite**.
+Portal de notícias completo com atualização automática via RSS, painel administrativo e múltiplas categorias.
 
-## ✨ Funcionalidades
+## 📋 Categorias Incluídas
 
-- ✅ **100% PHP Puro** - Sem frameworks ou dependências externas
-- ✅ **SQLite** - Banco de dados embutido, sem necessidade de MySQL/PostgreSQL
-- ✅ **10 Fontes de Notícias** pré-configuradas (G1, UOL, R7, Terra, BBC, CNN, Estadão, Folha, O Globo, Reuters)
-- ✅ **Design Responsivo** - Funciona em desktop e mobile
-- ✅ **Filtro por Fonte** - Selecione notícias de fontes específicas
-- ✅ **Busca** - Pesquise notícias por palavras-chave
-- ✅ **Paginação** - Navegação por páginas de resultados
-- ✅ **Breaking News Banner** - Destaque para última notícia
-- ✅ **Sidebar** - Lista de fontes e estatísticas
-- ✅ **Atualização Automática** - Via script cron (a cada 5 minutos)
-- ✅ **Segurança** - Prepared statements contra SQL injection, XSS protection
+- **Nacional**: G1, UOL, R7, CNN Brasil, Estadão, Folha, O Globo
+- **Internacional**: BBC News, Reuters, Deutsche Welle, France 24
+- **Esportes**: Globo Esporte, ESPN, Lance!, Gazeta Esportiva
+- **Janelas de Transferência**: Mercado da Bola, 90min
+- **Tecnologia**: TecMundo, Canaltech, Adrenaline, Olhar Digital
+- **IA**: AI News, VentureBeat AI
+- **Política**: Poder360, Congresso em Foco, Política Hoje
+- **Guerra**: BBC World, Al Jazeera, Reuters World
+- **Gospel**: Gospel+, Guiame, CPAD News
+
+## 🚀 Funcionalidades
+
+### Front-end
+- ✅ Layout em grade responsivo
+- ✅ Filtro por categoria
+- ✅ Busca de notícias
+- ✅ Atualização automática (configurada para 1 hora)
+- ✅ Breaking news banner
+- ✅ Espaço para publicidade (header, sidebar, footer)
+
+### Painel Administrativo
+- ✅ Login seguro (admin/admin123 por padrão)
+- ✅ Dashboard com estatísticas
+- ✅ Gerenciar notícias (CRUD completo)
+- ✅ Adicionar notícias manualmente
+- ✅ Atualizar feeds manualmente
+- ✅ Configurações do portal:
+  - Nome do site
+  - Logotipo
+  - WhatsApp
+  - E-mail
+  - Usuário/senha admin
+  - Códigos de publicidade
+- ✅ Sistema de enquetes
+- ✅ Botão de atualização manual
 
 ## 📁 Estrutura de Arquivos
 
 ```
-/workspace/
-├── index.php          # Página principal do portal
-├── config.php         # Configurações, funções e integração RSS
-├── update_feeds.php   # Script de atualização dos feeds
-├── install.sh         # Script de instalação automatizada
-├── README.md          # Esta documentação
-└── data/              # Diretório do banco SQLite
-    └── portal.db      # Banco de dados (criado automaticamente)
+/workspace
+├── index.php              # Página principal
+├── admin.php              # Painel administrativo
+├── update_feeds.php       # Script de atualização
+├── cron_update.sh         # Script para cron (atualização horária)
+├── .htaccess              # Regras de rewrite
+├── config/
+│   └── database.php       # Configuração do banco e fontes RSS
+├── src/
+│   ├── Models/
+│   │   ├── NewsModel.php
+│   │   ├── SettingsModel.php
+│   │   └── PollModel.php
+│   ├── Controllers/
+│   │   ├── HomeController.php
+│   │   └── AdminController.php
+│   ├── Services/
+│   │   └── FeedService.php
+│   ├── Views/
+│   │   ├── home/
+│   │   │   └── index.php
+│   │   └── admin/
+│   │       ├── login.php
+│   │       ├── dashboard.php
+│   │       ├── news.php
+│   │       ├── news_form.php
+│   │       └── settings.php
+│   └── Utils/
+│       ├── Helpers.php
+│       └── Router.php
+├── public/
+│   ├── css/
+│   │   └── style.css
+│   └── js/
+└── data/
+    └── portal.db          # Banco SQLite
 ```
 
-## 🚀 Instalação
+## 🔧 Instalação
 
-### Pré-requisitos
+1. Certifique-se de ter PHP 8.0+ instalado
+2. Clone o repositório ou copie os arquivos para seu servidor
+3. Acesse o site pela primeira vez para inicializar o banco de dados
+4. Execute a atualização dos feeds: `php update_feeds.php`
 
-- PHP 7.4 ou superior
-- Extensão SQLite3 habilitada no PHP
+## ⚙️ Configuração de Atualização Automática
 
-### Passo a Passo
-
-1. **Clone o repositório** (se ainda não estiver no local):
+### Via Cron (Linux)
+Adicione ao crontab (`crontab -e`):
 ```bash
-cd /workspace
+0 * * * * /workspace/cron_update.sh
 ```
 
-2. **Execute o script de instalação**:
-```bash
-./install.sh
-```
+### Via Painel Administrativo
+- Acesse `/admin/login`
+- Use as credenciais: `admin` / `admin123`
+- Clique em "Atualizar Feeds Agora"
 
-Ou manualmente:
+## 🔐 Acesso Administrativo
 
-```bash
-# Verificar PHP e SQLite
-php -v
-php -m | grep sqlite
+- URL: `/admin` ou `/admin.php`
+- Usuário padrão: `admin`
+- Senha padrão: `admin123`
 
-# Criar diretório de dados
-mkdir -p data
-chmod 755 data
-
-# Executar primeira atualização
-php update_feeds.php
-```
-
-## 🎯 Uso
-
-### Iniciar Servidor de Desenvolvimento
-
-```bash
-php -S localhost:8000 -t /workspace
-```
-
-### Acessar no Navegador
-
-```
-http://localhost:8000
-```
-
-### Atualizar Notícias Manualmente
-
-```bash
-php update_feeds.php
-```
-
-### Configurar Atualização Automática (Cron)
-
-Edite o crontab:
-```bash
-crontab -e
-```
-
-Adicione a linha:
-```cron
-*/5 * * * * php /workspace/update_feeds.php
-```
-
-Isso atualizará as notícias a cada 5 minutos automaticamente.
-
-## 🔧 Configuração
-
-### Adicionar Novas Fontes
-
-Edite o arquivo `config.php` e adicione novas fontes ao array `$news_sources`:
-
-```php
-$news_sources = [
-    // ... fontes existentes ...
-    [
-        'name' => 'Nova Fonte',
-        'url' => 'https://exemplo.com/rss',
-        'category' => 'Geral'
-    ],
-];
-```
-
-### Personalizar Cores
-
-Edite as variáveis CSS em `index.php`:
-
-```css
-:root {
-    --primary-color: #c0392b;      /* Cor principal */
-    --primary-dark: #a93226;       /* Cor principal escura */
-    --secondary-color: #2c3e50;    /* Cor secundária */
-    --accent-color: #3498db;       /* Cor de destaque */
-}
-```
-
-### Ajustar Quantidade de Notícias por Página
-
-Em `config.php`, altere:
-
-```php
-define('NEWS_PER_PAGE', 20); // Mude para o valor desejado
-```
-
-## 🛡️ Segurança
-
-- **SQL Injection**: Previno com prepared statements PDO
-- **XSS**: Proteção com `htmlspecialchars()` em todas as saídas
-- **Links Externos**: Todos os links abrem em nova aba com `rel="noopener noreferrer"`
+**Importante**: Altere as credenciais no menu Configurações!
 
 ## 📊 Banco de Dados
 
-O SQLite é criado automaticamente na primeira execução. Estrutura:
+O sistema utiliza SQLite localizado em `data/portal.db`.
 
-```sql
-CREATE TABLE news (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    title TEXT NOT NULL,
-    description TEXT,
-    link TEXT UNIQUE NOT NULL,
-    pub_date DATETIME,
-    source_name TEXT,
-    source_url TEXT,
-    category TEXT,
-    image_url TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-```
+Tabelas criadas automaticamente:
+- `news` - Notícias
+- `settings` - Configurações do portal
+- `polls` - Enquetes
+- `poll_options` - Opções das enquetes
+- `poll_votes` - Votos das enquetes
 
-## 🔍 Funcionalidades da Interface
+## 🎨 Personalização
 
-- **Header**: Logo, barra de busca responsiva
-- **Breaking News**: Banner com a última notícia
-- **Grid de Notícias**: Cards com imagem, título, descrição e fonte
-- **Sidebar**: 
-  - Filtro por fonte com contador
-  - Estatísticas em tempo real
-  - Informações do sistema
-- **Paginação**: Navegação inteligente entre páginas
-- **Footer**: Informações de copyright e atualização
+Todas as configurações podem ser alteradas pelo painel administrativo:
+- Nome do site
+- Logotipo
+- Contatos (WhatsApp, E-mail)
+- Credenciais de acesso
+- Códigos de publicidade (Google AdSense, etc.)
 
-## 🐛 Solução de Problemas
+## 📱 Responsividade
 
-### PHP não encontrado
-```bash
-# Ubuntu/Debian
-sudo apt-get install php php-sqlite3
+O layout é totalmente responsivo e se adapta a:
+- Desktops
+- Tablets
+- Celulares
 
-# CentOS/RHEL
-sudo yum install php php-pdo
-```
+## 🔄 Atualização de Feeds
 
-### Extensão SQLite não habilitada
-```bash
-# Ubuntu/Debian
-sudo apt-get install php-sqlite3
+A atualização ocorre:
+- Automaticamente a cada hora (via cron)
+- Manualmente pelo botão no painel admin
+- Via script CLI: `php update_feeds.php`
 
-# Verificar se está habilitada
-php -m | grep sqlite
-```
+## 📝 Licença
 
-### Permissões do diretório data
-```bash
-chmod 755 /workspace/data
-chown www-data:www-data /workspace/data  # Se usar Apache/Nginx
-```
-
-### Feeds não carregam
-- Verifique sua conexão com a internet
-- Alguns feeds podem estar temporariamente indisponíveis
-- Execute `php update_feeds.php` para ver erros específicos
-
-## 📝 Fontes Incluídas
-
-| Fonte | Categoria |
-|-------|-----------|
-| G1 - Últimas Notícias | Geral |
-| UOL Notícias | Geral |
-| R7 Notícias | Geral |
-| Terra Notícias | Geral |
-| BBC News Brasil | Internacional |
-| CNN Brasil | Geral |
-| Estadão | Geral |
-| Folha de S.Paulo | Geral |
-| O Globo | Geral |
-| Reuters Brasil | Internacional |
-
-## 📄 Licença
-
-Este projeto é open source e pode ser usado livremente.
-
-## 🤝 Contribuição
-
-Sinta-se à vontade para:
-- Adicionar novas fontes de notícias
-- Melhorar o design
-- Corrigir bugs
-- Sugerir novas funcionalidades
-
----
-
-**Desenvolvido com ❤️ em PHP Puro + SQLite**
+Use livremente para seus projetos!
