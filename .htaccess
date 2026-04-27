@@ -1,0 +1,7 @@
+# Redirecionar todas as requisições para admin para admin.php
+RewriteEngine On
+
+# Admin routes
+RewriteRule ^admin$ admin.php [L]
+RewriteRule ^admin/$ admin.php [L]
+RewriteRule ^admin/(.*)$ admin.php [L,QSA]

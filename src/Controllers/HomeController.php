@@ -6,10 +6,12 @@
 class HomeController {
     private NewsModel $newsModel;
     private FeedService $feedService;
+    private ?SettingsModel $settingsModel = null;
     
-    public function __construct(NewsModel $newsModel, FeedService $feedService) {
+    public function __construct(NewsModel $newsModel, FeedService $feedService, ?SettingsModel $settingsModel = null) {
         $this->newsModel = $newsModel;
         $this->feedService = $feedService;
+        $this->settingsModel = $settingsModel;
     }
     
     /**
@@ -18,7 +20,7 @@ class HomeController {
     public function index(): void {
         // Parâmetros da requisição
         $page = max(1, (int)Helpers::getParam('page', 1));
-        $source_filter = Helpers::getParam('source');
+        $category_filter = Helpers::getParam('category');
         $search = Helpers::getParam('search');
         
         if (!empty($search)) {
@@ -26,15 +28,14 @@ class HomeController {
         }
         
         // Obter notícias
-        $news = $this->newsModel->getNews($page, NEWS_PER_PAGE, $source_filter, $search);
-        $total_news = $this->newsModel->countNews($source_filter, $search);
+        $news = $this->newsModel->getNews($page, NEWS_PER_PAGE, null, $search, $category_filter);
+        $total_news = $this->newsModel->countNews(null, $search, $category_filter);
         $total_pages = ceil($total_news / NEWS_PER_PAGE);
-        
-        // Obter fontes para o sidebar
-        $sources = $this->newsModel->getSources();
         
         // Última notícia para destaque
         $latest_news = $this->newsModel->getLatestNews();
+        
+        global $CATEGORIES;
         
         // Renderizar view
         Helpers::render('home/index', [
@@ -42,10 +43,11 @@ class HomeController {
             'news' => $news,
             'total_news' => $total_news,
             'total_pages' => $total_pages,
-            'sources' => $sources,
             'latest_news' => $latest_news,
-            'source_filter' => $source_filter,
-            'search' => $search
+            'category_filter' => $category_filter,
+            'search' => $search,
+            'CATEGORIES' => $CATEGORIES,
+            'settingsModel' => $this->settingsModel
         ]);
     }
 }

@@ -16,8 +16,8 @@
                 <span>- Notícias em tempo real</span>
             </div>
             <form class="search-form" method="GET" action="">
-                <?php if ($source_filter): ?>
-                    <input type="hidden" name="source" value="<?= Helpers::escape($source_filter) ?>">
+                <?php if ($category_filter): ?>
+                    <input type="hidden" name="category" value="<?= Helpers::escape($category_filter) ?>">
                 <?php endif; ?>
                 <input 
                     type="text" 
@@ -29,6 +29,7 @@
                 >
                 <button type="submit" class="search-btn">🔍 Buscar</button>
             </form>
+            <a href="<?= SITE_URL ?>/admin/login" class="btn btn-admin" style="background: white; color: var(--primary-color); padding: 0.5rem 1rem; border-radius: 4px; text-decoration: none; font-weight: 600;">⚙️ Admin</a>
         </div>
     </header>
 
@@ -129,20 +130,19 @@
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-widget">
-                <h3 class="widget-title">📁 Fontes</h3>
+                <h3 class="widget-title">📁 Categorias</h3>
                 <ul class="source-list">
                     <li class="source-item">
-                        <a href="?page=1" class="source-link <?= empty($source_filter) ? 'active' : '' ?>">
+                        <a href="?page=1" class="source-link <?= empty($category_filter) ? 'active' : '' ?>">
                             Todas
                             <span class="source-count"><?= $total_news ?></span>
                         </a>
                     </li>
-                    <?php foreach ($sources as $src): ?>
+                    <?php foreach ($CATEGORIES as $key => $label): ?>
                         <li class="source-item">
-                            <a href="?page=1&source=<?= urlencode($src['source_name']) ?>" 
-                               class="source-link <?= $source_filter === $src['source_name'] ? 'active' : '' ?>">
-                                <?= Helpers::escape($src['source_name']) ?>
-                                <span class="source-count"><?= $src['category'] ?></span>
+                            <a href="?page=1&category=<?= urlencode($key) ?>" 
+                               class="source-link <?= $category_filter === $key ? 'active' : '' ?>">
+                                <?= $label ?>
                             </a>
                         </li>
                     <?php endforeach; ?>
@@ -153,7 +153,7 @@
                 <h3 class="widget-title">📊 Estatísticas</h3>
                 <div style="font-size: 0.9rem;">
                     <p><strong>Total de notícias:</strong> <?= number_format($total_news) ?></p>
-                    <p><strong>Fontes disponíveis:</strong> <?= count($sources) ?></p>
+                    <p><strong>Categorias:</strong> <?= count($CATEGORIES) ?></p>
                     <p><strong>Página atual:</strong> <?= $page ?> de <?= $total_pages ?></p>
                 </div>
             </div>
@@ -162,9 +162,19 @@
                 <h3 class="widget-title">⚙️ Sistema</h3>
                 <div style="font-size: 0.85rem; color: var(--text-light);">
                     <p>Última atualização: <?= date('d/m/Y H:i') ?></p>
-                    <p>Atualização automática a cada 5 minutos</p>
+                    <p>Atualização automática a cada hora</p>
                 </div>
             </div>
+            
+            <?php if (!empty($settingsModel)): 
+                $adSidebar = $settingsModel->getValue('ad_code_sidebar', '');
+                if ($adSidebar): ?>
+                <div class="sidebar-widget">
+                    <h3 class="widget-title">📢 Publicidade</h3>
+                    <?= $adSidebar ?>
+                </div>
+                <?php endif; ?>
+            <?php endif; ?>
         </aside>
     </div>
 
