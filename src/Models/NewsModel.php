@@ -1,222 +1,108 @@
 <?php
-/**
- * Model para gerenciamento de notícias
- */
+require_once __DIR__ . '/Database.php';
 
 class NewsModel {
-    private PDO $db;
+    private $db;
     
-    public function __construct(PDO $db) {
-        $this->db = $db;
+    public function __construct() {
+        $this->db = Database::getInstance()->getConnection();
     }
     
-    /**
-     * Obter notícias com paginação e filtros
-     */
-    public function getNews(int $page = 1, int $limit = 24, ?string $source = null, ?string $search = null, ?string $category = null): array {
-        $offset = ($page - 1) * $limit;
-        
-        $where = [];
+    public function getAll($category = null, $limit = 50) {
+        $sql = "SELECT * FROM news WHERE 1=1";
         $params = [];
         
-        if ($source) {
-            $where[] = "source_name = :source";
-            $params[':source'] = $source;
-        }
-        
-        if ($search) {
-            $where[] = "(title LIKE :search OR description LIKE :search)";
-            $params[':search'] = '%' . $search . '%';
-        }
-        
         if ($category) {
-            $where[] = "category = :category";
-            $params[':category'] = $category;
+            $sql .= " AND category = ?";
+            $params[] = $category;
         }
         
-        $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+        $sql .= " ORDER BY published_at DESC LIMIT $limit";
         
-        $sql = "SELECT * FROM news $whereClause ORDER BY pub_date DESC LIMIT :limit OFFSET :offset";
         $stmt = $this->db->prepare($sql);
-        
-        foreach ($params as $key => $value) {
-            $stmt->bindValue($key, $value);
-        }
-        
-        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
-        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
-        
-        $stmt->execute();
-        return $stmt->fetchAll();
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
     
-    /**
-     * Contar total de notícias
-     */
-    public function countNews(?string $source = null, ?string $search = null, ?string $category = null): int {
-        $where = [];
-        $params = [];
-        
-        if ($source) {
-            $where[] = "source_name = :source";
-            $params[':source'] = $source;
-        }
-        
-        if ($search) {
-            $where[] = "(title LIKE :search OR description LIKE :search)";
-            $params[':search'] = '%' . $search . '%';
-        }
-        
-        if ($category) {
-            $where[] = "category = :category";
-            $params[':category'] = $category;
-        }
-        
-        $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
-        
-        $sql = "SELECT COUNT(*) as total FROM news $whereClause";
+    public function getByCategory($category, $limit = 20) {
+        return $this->getAll($category, $limit);
+    }
+    
+    public function getLatest($limit = 10) {
+        return $this->getAll(null, $limit);
+    }
+    
+    public function search($query) {
+        $sql = "SELECT * FROM news WHERE title LIKE ? OR description LIKE ? ORDER BY published_at DESC LIMIT 50";
         $stmt = $this->db->prepare($sql);
-        
-        foreach ($params as $key => $value) {
-            $stmt->bindValue($key, $value);
-        }
-        
-        $stmt->execute();
-        $result = $stmt->fetch();
-        
-        return (int)$result['total'];
+        $searchTerm = "%$query%";
+        $stmt->execute([$searchTerm, $searchTerm]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
     
-    /**
-     * Contar notícias por categoria
-     */
-    public function countByCategory(): array {
-        $stmt = $this->db->query("SELECT category, COUNT(*) as total FROM news GROUP BY category ORDER BY category");
-        return $stmt->fetchAll();
+    public function getById($id) {
+        $stmt = $this->db->prepare("SELECT * FROM news WHERE id = ?");
+        $stmt->execute([$id]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
     }
     
-    /**
-     * Obter todas as fontes únicas
-     */
-    public function getSources(): array {
-        $stmt = $this->db->query("SELECT DISTINCT source_name, category FROM news ORDER BY source_name");
-        return $stmt->fetchAll();
-    }
-    
-    /**
-     * Salvar notícias no banco
-     */
-    public function saveNews(array $items): int {
-        $count = 0;
-        
-        $stmt = $this->db->prepare("
-            INSERT OR IGNORE INTO news (title, description, link, pub_date, source_name, source_url, category, image_url)
-            VALUES (:title, :description, :link, :pub_date, :source_name, :source_url, :category, :image_url)
-        ");
-        
-        foreach ($items as $item) {
+    public function add($data) {
+        try {
+            $sql = "INSERT INTO news (title, description, content, link, image, source, category, published_at, is_manual) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            $stmt = $this->db->prepare($sql);
             $stmt->execute([
-                ':title' => $item['title'],
-                ':description' => $item['description'],
-                ':link' => $item['link'],
-                ':pub_date' => $item['pub_date'],
-                ':source_name' => $item['source_name'],
-                ':source_url' => $item['source_url'],
-                ':category' => $item['category'],
-                ':image_url' => $item['image_url']
+                $data['title'],
+                $data['description'] ?? '',
+                $data['content'] ?? '',
+                $data['link'] ?? '',
+                $data['image'] ?? '',
+                $data['source'] ?? '',
+                $data['category'],
+                $data['published_at'] ?? date('Y-m-d H:i:s'),
+                $data['is_manual'] ?? 0
             ]);
-            
-            if ($stmt->rowCount() > 0) {
-                $count++;
+            return $this->db->lastInsertId();
+        } catch (PDOException $e) {
+            if (strpos($e->getMessage(), 'UNIQUE') !== false) {
+                return false; // Já existe
             }
+            throw $e;
         }
-        
-        return $count;
     }
     
-    /**
-     * Obter última notícia
-     */
-    public function getLatestNews(): ?array {
-        $stmt = $this->db->query("SELECT * FROM news ORDER BY pub_date DESC LIMIT 1");
-        $result = $stmt->fetch();
-        return $result ?: null;
-    }
-    
-    /**
-     * Limpar notícias antigas
-     */
-    public function cleanOldNews(int $days = 30): int {
-        $cutoff = date('Y-m-d H:i:s', strtotime("-$days days"));
-        
-        $stmt = $this->db->prepare("DELETE FROM news WHERE pub_date < :cutoff");
-        $stmt->execute([':cutoff' => $cutoff]);
-        
-        return $stmt->rowCount();
-    }
-    
-    /**
-     * Obter uma notícia por ID
-     */
-    public function getNewsById(int $id): ?array {
-        $stmt = $this->db->prepare("SELECT * FROM news WHERE id = :id");
-        $stmt->execute([':id' => $id]);
-        $result = $stmt->fetch();
-        return $result ?: null;
-    }
-    
-    /**
-     * Atualizar uma notícia
-     */
-    public function updateNews(int $id, array $data): bool {
-        $allowed = ['title', 'description', 'category', 'image_url'];
-        $fields = [];
-        $params = [':id' => $id];
-        
-        foreach ($allowed as $field) {
-            if (isset($data[$field])) {
-                $fields[] = "$field = :$field";
-                $params[":$field"] = $data[$field];
-            }
-        }
-        
-        if (empty($fields)) {
-            return false;
-        }
-        
-        $sql = "UPDATE news SET " . implode(', ', $fields) . " WHERE id = :id";
+    public function update($id, $data) {
+        $sql = "UPDATE news SET title = ?, description = ?, content = ?, image = ?, source = ?, category = ?, published_at = ? WHERE id = ?";
         $stmt = $this->db->prepare($sql);
-        return $stmt->execute($params);
-    }
-    
-    /**
-     * Excluir uma notícia
-     */
-    public function deleteNews(int $id): bool {
-        $stmt = $this->db->prepare("DELETE FROM news WHERE id = :id");
-        return $stmt->execute([':id' => $id]);
-    }
-    
-    /**
-     * Adicionar notícia manualmente
-     */
-    public function addManualNews(array $data): int {
-        $stmt = $this->db->prepare("
-            INSERT INTO news (title, description, link, pub_date, source_name, source_url, category, image_url)
-            VALUES (:title, :description, :link, :pub_date, :source_name, :source_url, :category, :image_url)
-        ");
-        
-        $stmt->execute([
-            ':title' => $data['title'],
-            ':description' => $data['description'] ?? '',
-            ':link' => $data['link'],
-            ':pub_date' => $data['pub_date'] ?? date('Y-m-d H:i:s'),
-            ':source_name' => $data['source_name'],
-            ':source_url' => $data['source_url'] ?? '',
-            ':category' => $data['category'],
-            ':image_url' => $data['image_url'] ?? ''
+        return $stmt->execute([
+            $data['title'],
+            $data['description'] ?? '',
+            $data['content'] ?? '',
+            $data['image'] ?? '',
+            $data['source'] ?? '',
+            $data['category'],
+            $data['published_at'] ?? date('Y-m-d H:i:s'),
+            $id
         ]);
-        
-        return (int)$this->db->lastInsertId();
+    }
+    
+    public function delete($id) {
+        $stmt = $this->db->prepare("DELETE FROM news WHERE id = ?");
+        return $stmt->execute([$id]);
+    }
+    
+    public function incrementViews($id) {
+        $stmt = $this->db->prepare("UPDATE news SET views = views + 1 WHERE id = ?");
+        return $stmt->execute([$id]);
+    }
+    
+    public function countByCategory() {
+        $sql = "SELECT category, COUNT(*) as count FROM news GROUP BY category";
+        $stmt = $this->db->query($sql);
+        return $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+    }
+    
+    public function getTotalCount() {
+        return $this->db->query("SELECT COUNT(*) FROM news")->fetchColumn();
     }
 }

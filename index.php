@@ -1,22 +1,88 @@
 <?php
-/**
- * Mega Portal de Notícias - Página Principal
- * Interface responsiva e moderna em PHP puro
- */
-
+session_start();
 require_once __DIR__ . '/config/database.php';
+require_once __DIR__ . '/src/Models/Database.php';
 require_once __DIR__ . '/src/Models/NewsModel.php';
 require_once __DIR__ . '/src/Models/SettingsModel.php';
-require_once __DIR__ . '/src/Services/FeedService.php';
-require_once __DIR__ . '/src/Controllers/HomeController.php';
-require_once __DIR__ . '/src/Utils/Helpers.php';
+require_once __DIR__ . '/src/Models/PollModel.php';
 
-// Inicializar dependências
-$db = getDbConnection();
-$newsModel = new NewsModel($db);
-$settingsModel = new SettingsModel($db);
-$feedService = new FeedService($GLOBALS['NEWS_SOURCES']);
-$controller = new HomeController($newsModel, $feedService, $settingsModel);
+$settingsModel = new SettingsModel();
+$newsModel = new NewsModel();
+$pollModel = new PollModel();
 
-// Executar controller
-$controller->index();
+$config = $settingsModel->getAll();
+$category = $_GET['category'] ?? null;
+$search = $_GET['search'] ?? null;
+
+if ($search) {
+    $news = $newsModel->search($search);
+} elseif ($category && isset(CATEGORIES[$category])) {
+    $news = $newsModel->getByCategory($category, 30);
+} else {
+    $news = $newsModel->getLatest(50);
+}
+
+$activePoll = $pollModel->getActive();
+$categoryCounts = $newsModel->countByCategory();
+
+// Se não houver notícias, redireciona para atualização
+if (empty($news) && !isset($_GET['skip_update'])) {
+    header('Location: update_feeds.php?redirect=1');
+    exit;
+}
+?>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?= htmlspecialchars($config['site_name'] ?? 'Portal de Notícias') ?></title>
+    <link rel="stylesheet" href="/public/css/style.css">
+</head>
+<body>
+    <?php include __DIR__ . '/src/Views/partials/header.php'; ?>
+    
+    <div class="container main-content">
+        <aside class="sidebar">
+            <?php include __DIR__ . '/src/Views/partials/sidebar.php'; ?>
+        </aside>
+        
+        <main class="content">
+            <?php if ($category && isset(CATEGORIES[$category])): ?>
+                <h2 class="category-title"><?= CATEGORIES[$category] ?></h2>
+            <?php elseif ($search): ?>
+                <h2 class="category-title">Resultados para: <?= htmlspecialchars($search) ?></h2>
+            <?php else: ?>
+                <h2 class="category-title">Últimas Notícias</h2>
+            <?php endif; ?>
+            
+            <div class="news-grid">
+                <?php foreach ($news as $item): ?>
+                    <article class="news-card">
+                        <?php if ($item['image']): ?>
+                            <div class="news-image">
+                                <img src="<?= htmlspecialchars($item['image']) ?>" alt="<?= htmlspecialchars($item['title']) ?>" onerror="this.style.display='none'">
+                            </div>
+                        <?php endif; ?>
+                        <div class="news-content">
+                            <span class="news-category"><?= CATEGORIES[$item['category']] ?? $item['category'] ?></span>
+                            <h3><a href="<?= htmlspecialchars($item['link']) ?>" target="_blank"><?= htmlspecialchars($item['title']) ?></a></h3>
+                            <p class="news-description"><?= htmlspecialchars(substr($item['description'], 0, 150)) ?>...</p>
+                            <div class="news-meta">
+                                <span class="news-source"><?= htmlspecialchars($item['source']) ?></span>
+                                <span class="news-date"><?= date('d/m/Y H:i', strtotime($item['published_at'])) ?></span>
+                            </div>
+                        </div>
+                    </article>
+                <?php endforeach; ?>
+            </div>
+            
+            <?php if (empty($news)): ?>
+                <p class="no-news">Nenhuma notícia encontrada.</p>
+            <?php endif; ?>
+        </main>
+    </div>
+    
+    <?php include __DIR__ . '/src/Views/partials/footer.php'; ?>
+</body>
+</html>

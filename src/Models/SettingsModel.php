@@ -1,81 +1,34 @@
 <?php
-/**
- * Model para configurações do portal
- */
+require_once __DIR__ . '/Database.php';
 
 class SettingsModel {
-    private PDO $db;
+    private $db;
     
-    public function __construct(PDO $db) {
-        $this->db = $db;
+    public function __construct() {
+        $this->db = Database::getInstance()->getConnection();
     }
     
-    /**
-     * Obter todas as configurações
-     */
-    public function getAll(): array {
-        $stmt = $this->db->query("SELECT * FROM settings ORDER BY setting_key");
-        return $stmt->fetchAll();
+    public function get($key) {
+        $stmt = $this->db->prepare("SELECT value FROM settings WHERE key = ?");
+        $stmt->execute([$key]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $result ? $result['value'] : null;
     }
     
-    /**
-     * Obter uma configuração por chave
-     */
-    public function get(string $key): ?array {
-        $stmt = $this->db->prepare("SELECT * FROM settings WHERE setting_key = :key");
-        $stmt->execute([':key' => $key]);
-        $result = $stmt->fetch();
-        return $result ?: null;
+    public function set($key, $value) {
+        $stmt = $this->db->prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)");
+        return $stmt->execute([$key, $value]);
     }
     
-    /**
-     * Obter valor de uma configuração
-     */
-    public function getValue(string $key, $default = null) {
-        $setting = $this->get($key);
-        return $setting ? $setting['setting_value'] : $default;
+    public function getAll() {
+        $stmt = $this->db->query("SELECT key, value FROM settings");
+        return $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
     }
     
-    /**
-     * Atualizar ou criar uma configuração
-     */
-    public function set(string $key, string $value): bool {
-        $existing = $this->get($key);
-        
-        if ($existing) {
-            $stmt = $this->db->prepare("UPDATE settings SET setting_value = :value, updated_at = CURRENT_TIMESTAMP WHERE setting_key = :key");
-            return $stmt->execute([
-                ':key' => $key,
-                ':value' => $value
-            ]);
-        } else {
-            $stmt = $this->db->prepare("INSERT INTO settings (setting_key, setting_value, created_at, updated_at) VALUES (:key, :value, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)");
-            return $stmt->execute([
-                ':key' => $key,
-                ':value' => $value
-            ]);
+    public function updateBatch($data) {
+        foreach ($data as $key => $value) {
+            $this->set($key, $value);
         }
-    }
-    
-    /**
-     * Atualizar múltiplas configurações
-     */
-    public function setMultiple(array $settings): int {
-        $count = 0;
-        foreach ($settings as $key => $value) {
-            if ($this->set($key, $value)) {
-                $count++;
-            }
-        }
-        return $count;
-    }
-    
-    /**
-     * Obter configurações da seção
-     */
-    public function getBySection(string $section): array {
-        $stmt = $this->db->prepare("SELECT * FROM settings WHERE setting_section = :section ORDER BY setting_key");
-        $stmt->execute([':section' => $section]);
-        return $stmt->fetchAll();
+        return true;
     }
 }

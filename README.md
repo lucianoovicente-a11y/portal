@@ -1,148 +1,114 @@
 # Mega Portal de Notícias
 
-Portal de notícias completo com atualização automática via RSS, painel administrativo e múltiplas categorias.
+Portal completo de notícias com múltiplas categorias, painel administrativo e atualização automática.
 
-## 📋 Categorias Incluídas
+## 📋 Categorias
 
 - **Nacional**: G1, UOL, R7, CNN Brasil, Estadão, Folha, O Globo
 - **Internacional**: BBC News, Reuters, Deutsche Welle, France 24
-- **Esportes**: Globo Esporte, ESPN, Lance!, Gazeta Esportiva
-- **Janelas de Transferência**: Mercado da Bola, 90min
+- **Esportes** (foco em futebol): Globo Esporte, ESPN, Lance!, Gazeta Esportiva, Mercado da Bola
+- **Janelas de Transferência**: 90min, Goal
 - **Tecnologia**: TecMundo, Canaltech, Adrenaline, Olhar Digital
-- **IA**: AI News, VentureBeat AI
+- **IA**: VentureBeat AI, AI News
 - **Política**: Poder360, Congresso em Foco, Política Hoje
-- **Guerra**: BBC World, Al Jazeera, Reuters World
+- **Guerra** (Brasil e Mundo): BBC World, Al Jazeera, Reuters World
 - **Gospel**: Gospel+, Guiame, CPAD News
 
-## 🚀 Funcionalidades
+## ✨ Funcionalidades
 
 ### Front-end
-- ✅ Layout em grade responsivo
-- ✅ Filtro por categoria
-- ✅ Busca de notícias
-- ✅ Atualização automática (configurada para 1 hora)
-- ✅ Breaking news banner
-- ✅ Espaço para publicidade (header, sidebar, footer)
+- Layout em grade responsivo
+- Filtro por categorias
+- Busca de notícias
+- Sistema de enquetes
+- Estatísticas em tempo real
+- Espaços para publicidade
 
-### Painel Administrativo
-- ✅ Login seguro (admin/admin123 por padrão)
-- ✅ Dashboard com estatísticas
-- ✅ Gerenciar notícias (CRUD completo)
-- ✅ Adicionar notícias manualmente
-- ✅ Atualizar feeds manualmente
-- ✅ Configurações do portal:
-  - Nome do site
-  - Logotipo
-  - WhatsApp
-  - E-mail
-  - Usuário/senha admin
-  - Códigos de publicidade
-- ✅ Sistema de enquetes
-- ✅ Botão de atualização manual
+### Painel Administrativo (`/admin`)
+- Login seguro
+- Dashboard com estatísticas
+- CRUD completo de notícias
+- Adicionar notícias manualmente
+- Botão "Atualizar Feeds Agora"
+- Configurações editáveis:
+  - Nome do site e logotipo
+  - WhatsApp e E-mail
+  - Credenciais de acesso
+  - Códigos de publicidade (header, sidebar, footer)
+- Sistema de enquetes
+- Exclusão e edição de notícias
 
-## 📁 Estrutura de Arquivos
+## 🔐 Acesso Admin
 
-```
-/workspace
-├── index.php              # Página principal
-├── admin.php              # Painel administrativo
-├── update_feeds.php       # Script de atualização
-├── cron_update.sh         # Script para cron (atualização horária)
-├── .htaccess              # Regras de rewrite
-├── config/
-│   └── database.php       # Configuração do banco e fontes RSS
-├── src/
-│   ├── Models/
-│   │   ├── NewsModel.php
-│   │   ├── SettingsModel.php
-│   │   └── PollModel.php
-│   ├── Controllers/
-│   │   ├── HomeController.php
-│   │   └── AdminController.php
-│   ├── Services/
-│   │   └── FeedService.php
-│   ├── Views/
-│   │   ├── home/
-│   │   │   └── index.php
-│   │   └── admin/
-│   │       ├── login.php
-│   │       ├── dashboard.php
-│   │       ├── news.php
-│   │       ├── news_form.php
-│   │       └── settings.php
-│   └── Utils/
-│       ├── Helpers.php
-│       └── Router.php
-├── public/
-│   ├── css/
-│   │   └── style.css
-│   └── js/
-└── data/
-    └── portal.db          # Banco SQLite
-```
-
-## 🔧 Instalação
-
-1. Certifique-se de ter PHP 8.0+ instalado
-2. Clone o repositório ou copie os arquivos para seu servidor
-3. Acesse o site pela primeira vez para inicializar o banco de dados
-4. Execute a atualização dos feeds: `php update_feeds.php`
-
-## ⚙️ Configuração de Atualização Automática
-
-### Via Cron (Linux)
-Adicione ao crontab (`crontab -e`):
-```bash
-0 * * * * /workspace/cron_update.sh
-```
-
-### Via Painel Administrativo
-- Acesse `/admin/login`
-- Use as credenciais: `admin` / `admin123`
-- Clique em "Atualizar Feeds Agora"
-
-## 🔐 Acesso Administrativo
-
-- URL: `/admin` ou `/admin.php`
+- URL: `/admin` ou `/admin/login`
 - Usuário padrão: `admin`
 - Senha padrão: `admin123`
 
-**Importante**: Altere as credenciais no menu Configurações!
+## 🚀 Instalação
 
-## 📊 Banco de Dados
+1. Certifique-se de ter PHP 7.4+ com SQLite habilitado
+2. Acesse o site pela primeira vez para criar o banco
+3. Execute a atualização inicial:
+   ```bash
+   php update_feeds.php
+   ```
 
-O sistema utiliza SQLite localizado em `data/portal.db`.
+## ⏰ Atualização Automática
 
-Tabelas criadas automaticamente:
-- `news` - Notícias
-- `settings` - Configurações do portal
-- `polls` - Enquetes
-- `poll_options` - Opções das enquetes
-- `poll_votes` - Votos das enquetes
+### Via Cron (recomendado)
+Adicione ao crontab (crontab -e):
+```
+0 * * * * /workspace/cron_update.sh
+```
 
-## 🎨 Personalização
+### Manual
+```bash
+php update_feeds.php
+```
 
-Todas as configurações podem ser alteradas pelo painel administrativo:
-- Nome do site
-- Logotipo
-- Contatos (WhatsApp, E-mail)
-- Credenciais de acesso
-- Códigos de publicidade (Google AdSense, etc.)
+## 📁 Estrutura
 
-## 📱 Responsividade
+```
+/workspace
+├── config/
+│   └── database.php       # Configurações e fontes RSS
+├── src/
+│   ├── Models/
+│   │   ├── Database.php
+│   │   ├── NewsModel.php
+│   │   ├── SettingsModel.php
+│   │   └── PollModel.php
+│   ├── Services/
+│   │   └── FeedService.php
+│   └── Views/
+│       └── partials/
+├── admin/
+│   ├── index.php          # Painel principal
+│   ├── login.php
+│   ├── dashboard.php
+│   ├── news.php
+│   ├── add_news.php
+│   ├── edit_news.php
+│   ├── settings.php
+│   ├── polls.php
+│   └── poll_vote.php
+├── public/
+│   ├── css/style.css
+│   └── uploads/
+├── data/
+│   └── portal.db          # Banco SQLite
+├── index.php              # Página principal
+├── update_feeds.php       # Script de atualização
+└── cron_update.sh         # Script cron
+```
 
-O layout é totalmente responsivo e se adapta a:
-- Desktops
-- Tablets
-- Celulares
+## 🛠️ Tecnologias
 
-## 🔄 Atualização de Feeds
-
-A atualização ocorre:
-- Automaticamente a cada hora (via cron)
-- Manualmente pelo botão no painel admin
-- Via script CLI: `php update_feeds.php`
+- PHP 7.4+
+- SQLite
+- HTML5/CSS3
+- JavaScript (vanilla)
 
 ## 📝 Licença
 
-Use livremente para seus projetos!
+Uso livre.

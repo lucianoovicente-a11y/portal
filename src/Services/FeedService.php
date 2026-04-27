@@ -1,165 +1,87 @@
 <?php
-/**
- * Service para processamento de feeds RSS
- */
+require_once __DIR__ . '/../Models/NewsModel.php';
 
 class FeedService {
-    private array $sources;
+    private $newsModel;
     
-    public function __construct(array $sources) {
-        $this->sources = $sources;
+    public function __construct() {
+        $this->newsModel = new NewsModel();
     }
     
-    /**
-     * Extrair imagem do conteúdo ou descrição
-     */
-    private function extractImage(string $content): ?string {
-        $patterns = [
-            '/<img[^>]+src="([^"]+)"/i',
-            '/<meta property="og:image" content="([^"]+)"/i',
-            '/url\(([^)]+)\)/i'
-        ];
-        
-        foreach ($patterns as $pattern) {
-            if (preg_match($pattern, $content, $matches)) {
-                return trim($matches[1]);
+    public function fetchAllFeeds() {
+        $totalAdded = 0;
+        foreach (RSS_FEEDS as $category => $feeds) {
+            foreach ($feeds as $feed) {
+                $added = $this->fetchFeed($category, $feed);
+                $totalAdded += $added;
             }
         }
-        
+        return $totalAdded;
+    }
+    
+    public function fetchFeed($category, $feedInfo) {
+        $added = 0;
+        try {
+            $rssContent = file_get_contents($feedInfo['url']);
+            if (!$rssContent) return 0;
+            $rss = simplexml_load_string($rssContent);
+            if (!$rss) return 0;
+            $items = [];
+            if (isset($rss->channel->item)) {
+                $items = $rss->channel->item;
+            } elseif (isset($rss->entry)) {
+                $items = $rss->entry;
+            }
+            foreach ($items as $item) {
+                $data = $this->parseItem($item, $category, $feedInfo['name']);
+                if ($data) {
+                    $result = $this->newsModel->add($data);
+                    if ($result) $added++;
+                }
+            }
+        } catch (Exception $e) {
+            error_log("Erro feed {$feedInfo['url']}: " . $e->getMessage());
+        }
+        return $added;
+    }
+    
+    private function parseItem($item, $category, $sourceName) {
+        $data = ['category' => $category, 'source' => $sourceName, 'is_manual' => 0];
+        $data['title'] = $this->getStringValue($item, 'title');
+        if (!$data['title']) return null;
+        $data['description'] = $this->getStringValue($item, 'description') ?? $this->getStringValue($item, 'summary');
+        $data['link'] = $this->getStringValue($item, 'link');
+        if (!$data['link'] && isset($item->link->attributes()['href'])) {
+            $data['link'] = (string)$item->link->attributes()['href'];
+        }
+        $data['image'] = $this->extractImage($item);
+        $pubDate = $this->getStringValue($item, 'pubDate') ?? $this->getStringValue($item, 'published');
+        $data['published_at'] = $pubDate ? date('Y-m-d H:i:s', strtotime($pubDate)) : date('Y-m-d H:i:s');
+        return $data;
+    }
+    
+    private function getStringValue($item, $field) {
+        if (isset($item->$field)) return (string)$item->$field;
+        $namespaces = $item->getNamespaces(true);
+        foreach ($namespaces as $prefix => $ns) {
+            if (isset($item->children($ns)->$field)) return (string)$item->children($ns)->$field;
+        }
         return null;
     }
     
-    /**
-     * Buscar e processar feed RSS
-     */
-    public function fetchFeed(array $source): array {
-        $rss = @file_get_contents($source['url']);
-        
-        if (!$rss) {
-            return [];
+    private function extractImage($item) {
+        if (isset($item->children('http://search.yahoo.com/mrss/')->thumbnail)) {
+            $media = $item->children('http://search.yahoo.com/mrss/');
+            if (isset($media->thumbnail->attributes()['url'])) return (string)$media->thumbnail->attributes()['url'];
         }
-        
-        libxml_use_internal_errors(true);
-        $xml = simplexml_load_string($rss);
-        libxml_clear_errors();
-        
-        if (!$xml) {
-            return [];
-        }
-        
-        $items = [];
-        
-        // Suporte para diferentes formatos RSS
-        $channel = isset($xml->channel) ? $xml->channel : $xml;
-        $entries = isset($channel->item) ? $channel->item : (isset($channel->entry) ? $channel->entry : []);
-        
-        foreach ($entries as $item) {
-            $title = (string)($item->title ?? '');
-            $link = (string)($item->link ?? '');
-            
-            // Lidar com links complexos
-            if (is_object($link) && isset($link['href'])) {
-                $link = (string)$link['href'];
-            } elseif (is_array($link)) {
-                $link = $link[0] ?? '';
-            }
-            
-            $description = (string)($item->description ?? $item->summary ?? '');
-            $pubDate = (string)($item->pubDate ?? $item->published ?? date('r'));
-            
-            // Tentar extrair imagem
-            $imageUrl = null;
-            
-            // Verificar media:content
-            if (isset($item->children('media', true)->content)) {
-                $media = $item->children('media', true)->content;
-                $imageUrl = (string)$media['url'];
-            }
-            
-            // Verificar enclosure
-            if (!$imageUrl && isset($item->enclosure)) {
-                $imageUrl = (string)$item->enclosure['url'];
-            }
-            
-            // Extrair do conteúdo se não encontrou
-            if (!$imageUrl && !empty($description)) {
-                $imageUrl = $this->extractImage($description);
-            }
-            
-            // Converter data
-            $timestamp = strtotime($pubDate);
-            if ($timestamp === false) {
-                $timestamp = time();
-            }
-            
-            $items[] = [
-                'title' => strip_tags($title),
-                'description' => strip_tags($description),
-                'link' => $link,
-                'pub_date' => date('Y-m-d H:i:s', $timestamp),
-                'source_name' => $source['name'],
-                'source_url' => $source['url'],
-                'category' => $source['category'],
-                'image_url' => $imageUrl
-            ];
-        }
-        
-        return $items;
-    }
-    
-    /**
-     * Atualizar todos os feeds
-     */
-    public function updateAllFeeds(): array {
-        $results = [
-            'total_new' => 0,
-            'successful_feeds' => 0,
-            'failed_feeds' => 0,
-            'details' => []
-        ];
-        
-        foreach ($this->sources as $source) {
-            $detail = [
-                'name' => $source['name'],
-                'status' => 'success',
-                'items_count' => 0,
-                'new_count' => 0,
-                'error' => null
-            ];
-            
-            try {
-                $items = $this->fetchFeed($source);
-                
-                if (empty($items)) {
-                    $detail['status'] = 'warning';
-                    $detail['error'] = 'Nenhuma notícia encontrada ou erro ao ler feed';
-                    $results['failed_feeds']++;
-                    $results['details'][] = $detail;
-                    continue;
-                }
-                
-                $detail['items_count'] = count($items);
-                $results['details'][] = $detail;
-                $results['successful_feeds']++;
-                
-                // Pequena pausa para não sobrecarregar os servidores
-                usleep(500000); // 0.5 segundos
-                
-            } catch (Exception $e) {
-                $detail['status'] = 'error';
-                $detail['error'] = $e->getMessage();
-                $results['failed_feeds']++;
-                $results['details'][] = $detail;
+        if (isset($item->enclosure)) {
+            $attrs = $item->enclosure->attributes();
+            if (isset($attrs['type']) && strpos((string)$attrs['type'], 'image') !== false && isset($attrs['url'])) {
+                return (string)$attrs['url'];
             }
         }
-        
-        return $results;
-    }
-    
-    /**
-     * Obter todas as fontes
-     */
-    public function getSources(): array {
-        return $this->sources;
+        $content = $this->getStringValue($item, 'content') ?? $this->getStringValue($item, 'description');
+        if ($content && preg_match('/<img[^>]+src="([^"]+)"/i', $content, $matches)) return $matches[1];
+        return '';
     }
 }
