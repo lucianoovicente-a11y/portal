@@ -4,23 +4,30 @@
  * Executar via cron ou manualmente para atualizar as notícias
  */
 
-require_once 'config.php';
+require_once __DIR__ . '/config/database.php';
+require_once __DIR__ . '/src/Models/NewsModel.php';
+require_once __DIR__ . '/src/Services/FeedService.php';
 
 echo "========================================\n";
 echo "  Atualização de Feeds RSS\n";
 echo "  " . date('d/m/Y H:i:s') . "\n";
 echo "========================================\n\n";
 
+// Inicializar serviços
+$feedService = new FeedService($GLOBALS['NEWS_SOURCES']);
+$db = getDbConnection();
+$newsModel = new NewsModel($db);
+
 $total_new = 0;
 $successful_feeds = 0;
 $failed_feeds = 0;
 
-foreach ($news_sources as $source) {
+foreach ($GLOBALS['NEWS_SOURCES'] as $source) {
     echo "📰 Processando: {$source['name']}...\n";
     
     try {
         // Buscar feed
-        $items = fetchFeed($source);
+        $items = $feedService->fetchFeed($source);
         
         if (empty($items)) {
             echo "   ⚠️  Nenhuma notícia encontrada ou erro ao ler feed\n";
@@ -29,7 +36,7 @@ foreach ($news_sources as $source) {
         }
         
         // Salvar no banco
-        $new_count = saveNews($items);
+        $new_count = $newsModel->saveNews($items);
         
         echo "   ✅ Encontradas: " . count($items) . " notícias\n";
         echo "   💾 Novas: $new_count\n";
@@ -55,7 +62,7 @@ echo "  Total de novas notícias: $total_new\n";
 echo "========================================\n";
 
 // Limpar notícias muito antigas (opcional - descomente se quiser)
-// $deleted = cleanOldNews(60);
+// $deleted = $newsModel->cleanOldNews(60);
 // echo "  Notícias antigas removidas: $deleted\n";
 
 echo "\n✅ Atualização concluída!\n";

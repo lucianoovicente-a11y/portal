@@ -1,9 +1,10 @@
 # 📰 Mega Portal de Notícias
 
-Portal de notícias automático em **PHP Puro** com banco de dados **SQLite**.
+Portal de notícias automático em **PHP Puro** com arquitetura MVC e banco de dados **SQLite**.
 
 ## ✨ Funcionalidades
 
+- ✅ **Arquitetura MVC** - Código organizado em Model, View e Controller
 - ✅ **100% PHP Puro** - Sem frameworks ou dependências externas
 - ✅ **SQLite** - Banco de dados embutido, sem necessidade de MySQL/PostgreSQL
 - ✅ **10 Fontes de Notícias** pré-configuradas (G1, UOL, R7, Terra, BBC, CNN, Estadão, Folha, O Globo, Reuters)
@@ -20,13 +21,30 @@ Portal de notícias automático em **PHP Puro** com banco de dados **SQLite**.
 
 ```
 /workspace/
-├── index.php          # Página principal do portal
-├── config.php         # Configurações, funções e integração RSS
-├── update_feeds.php   # Script de atualização dos feeds
-├── install.sh         # Script de instalação automatizada
-├── README.md          # Esta documentação
-└── data/              # Diretório do banco SQLite
-    └── portal.db      # Banco de dados (criado automaticamente)
+├── index.php              # Ponto de entrada da aplicação
+├── update_feeds.php       # Script de atualização dos feeds
+├── install.sh             # Script de instalação automatizada
+├── README.md              # Esta documentação
+├── config/
+│   └── database.php       # Configurações do banco de dados
+├── src/
+│   ├── Controllers/
+│   │   └── HomeController.php    # Controller principal
+│   ├── Models/
+│   │   └── NewsModel.php         # Model de notícias
+│   ├── Services/
+│   │   └── FeedService.php       # Service de processamento RSS
+│   ├── Views/
+│   │   └── home/
+│   │       └── index.php         # View da página inicial
+│   └── Utils/
+│       └── Helpers.php           # Funções utilitárias
+├── public/
+│   ├── css/
+│   │   └── style.css             # Estilos CSS
+│   └── js/                       # JavaScript (futuro)
+└── data/
+    └── portal.db                 # Banco de dados SQLite
 ```
 
 ## 🚀 Instalação
@@ -101,10 +119,10 @@ Isso atualizará as notícias a cada 5 minutos automaticamente.
 
 ### Adicionar Novas Fontes
 
-Edite o arquivo `config.php` e adicione novas fontes ao array `$news_sources`:
+Edite o arquivo `config/database.php` e adicione novas fontes ao array `$NEWS_SOURCES`:
 
 ```php
-$news_sources = [
+$NEWS_SOURCES = [
     // ... fontes existentes ...
     [
         'name' => 'Nova Fonte',
@@ -116,7 +134,7 @@ $news_sources = [
 
 ### Personalizar Cores
 
-Edite as variáveis CSS em `index.php`:
+Edite as variáveis CSS em `public/css/style.css`:
 
 ```css
 :root {
@@ -129,7 +147,7 @@ Edite as variáveis CSS em `index.php`:
 
 ### Ajustar Quantidade de Notícias por Página
 
-Em `config.php`, altere:
+Em `config/database.php`, altere:
 
 ```php
 define('NEWS_PER_PAGE', 20); // Mude para o valor desejado
@@ -165,7 +183,7 @@ CREATE TABLE news (
 - **Header**: Logo, barra de busca responsiva
 - **Breaking News**: Banner com a última notícia
 - **Grid de Notícias**: Cards com imagem, título, descrição e fonte
-- **Sidebar**: 
+- **Sidebar**:
   - Filtro por fonte com contador
   - Estatísticas em tempo real
   - Informações do sistema
@@ -218,6 +236,16 @@ chown www-data:www-data /workspace/data  # Se usar Apache/Nginx
 | O Globo | Geral |
 | Reuters Brasil | Internacional |
 
+## 🏗️ Arquitetura
+
+Este projeto segue o padrão **MVC (Model-View-Controller)**:
+
+- **Models** (`src/Models/`): Gerenciam dados e regras de negócio
+- **Views** (`src/Views/`): Templates HTML para apresentação
+- **Controllers** (`src/Controllers/`): Processam requisições e coordenam models/views
+- **Services** (`src/Services/`): Lógica de negócios específica (ex: processamento RSS)
+- **Utils** (`src/Utils/`): Funções utilitárias reutilizáveis
+
 ## 📄 Licença
 
 Este projeto é open source e pode ser usado livremente.
@@ -232,4 +260,4 @@ Sinta-se à vontade para:
 
 ---
 
-**Desenvolvido com ❤️ em PHP Puro + SQLite**
+**Desenvolvido com ❤️ em PHP Puro + SQLite + MVC**

@@ -1,1 +1,28 @@
-Nothing needs to be added to .gitignore since only a PHP source file (`test_db.php`) was modified and no build artifacts, dependencies, or temporary files were detected in the changes.
+```php
+# Dependency directories
+vendor/
+composer.lock
+
+# Environment variables
+.env
+.env.local
+.env.*
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.tmp
+
+# Logs
+*.log
+
+# Build and cache directories
+cache/
+logs/
+
+# OS specific
+.DS_Store
+Thumbs.db
+```
