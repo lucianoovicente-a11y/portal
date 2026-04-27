@@ -68,7 +68,7 @@ define('DEFAULT_CONFIG', [
     'whatsapp' => '',
     'email' => '',
     'admin_user' => 'admin',
-    'admin_password' => 'admin123',
+    'admin_password' => '132004',
     'ads_header' => '',
     'ads_sidebar' => '',
     'ads_footer' => '',

@@ -50,7 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <input type="password" name="password" placeholder="Senha" required>
             <button type="submit">Entrar</button>
         </form>
-        <p style="text-align:center;margin-top:20px;color:#666;font-size:14px;">Padrão: admin / admin123</p>
+        <p style="text-align:center;margin-top:20px;color:#666;font-size:14px;">Padrão: admin / 132004</p>
     </div>
 </body>
 </html>

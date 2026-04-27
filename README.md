@@ -17,37 +17,40 @@ Portal completo de notícias com múltiplas categorias, painel administrativo e 
 ## ✨ Funcionalidades
 
 ### Front-end
-- Layout em grade responsivo
-- Filtro por categorias
-- Busca de notícias
-- Sistema de enquetes
-- Estatísticas em tempo real
-- Espaços para publicidade
+- ✅ Layout em grade responsivo com cards modernos
+- ✅ Todas as notícias com imagens (ou ícone placeholder)
+- ✅ Filtro por categorias
+- ✅ Busca de notícias
+- ✅ Sistema de enquetes
+- ✅ Estatísticas em tempo real
+- ✅ Espaços para publicidade (header, sidebar, footer)
+- ✅ Cabeçalho com logo, busca e botão admin
+- ✅ Rodapé com informações de contato
 
 ### Painel Administrativo (`/admin`)
-- Login seguro
-- Dashboard com estatísticas
-- CRUD completo de notícias
-- Adicionar notícias manualmente
-- Botão "Atualizar Feeds Agora"
-- Configurações editáveis:
+- ✅ Login seguro (usuário: `admin`, senha: `132004`)
+- ✅ Dashboard com estatísticas por categoria
+- ✅ CRUD completo de notícias (criar, editar, excluir)
+- ✅ Adicionar notícias manualmente com imagem
+- ✅ Botão "Atualizar Feeds Agora" (atualização manual)
+- ✅ Configurações editáveis:
   - Nome do site e logotipo
   - WhatsApp e E-mail
-  - Credenciais de acesso
+  - Credenciais de acesso admin
   - Códigos de publicidade (header, sidebar, footer)
-- Sistema de enquetes
-- Exclusão e edição de notícias
+- ✅ Sistema de enquetes
+- ✅ Exclusão e edição de notícias
 
 ## 🔐 Acesso Admin
 
 - URL: `/admin` ou `/admin/login`
 - Usuário padrão: `admin`
-- Senha padrão: `admin123`
+- Senha padrão: `132004`
 
 ## 🚀 Instalação
 
 1. Certifique-se de ter PHP 7.4+ com SQLite habilitado
-2. Acesse o site pela primeira vez para criar o banco
+2. Acesse o site pela primeira vez para criar o banco automaticamente
 3. Execute a atualização inicial:
    ```bash
    php update_feeds.php
@@ -56,12 +59,16 @@ Portal completo de notícias com múltiplas categorias, painel administrativo e 
 ## ⏰ Atualização Automática
 
 ### Via Cron (recomendado)
-Adicione ao crontab (crontab -e):
+Adicione ao crontab (`crontab -e`):
 ```
 0 * * * * /workspace/cron_update.sh
 ```
+Isso atualiza as notícias a cada hora automaticamente.
 
 ### Manual
+Pelo painel admin: clique em "🔄 Atualizar Feeds Agora"
+
+Ou via terminal:
 ```bash
 php update_feeds.php
 ```
@@ -79,34 +86,45 @@ php update_feeds.php
 │   │   ├── SettingsModel.php
 │   │   └── PollModel.php
 │   ├── Services/
-│   │   └── FeedService.php
+│   │   └── FeedService.php    # Extração avançada de imagens
 │   └── Views/
 │       └── partials/
+│           ├── header.php     # Cabeçalho com logo e busca
+│           ├── sidebar.php    # Estatísticas e enquetes
+│           └── footer.php     # Rodapé com contatos
 ├── admin/
 │   ├── index.php          # Painel principal
-│   ├── login.php
-│   ├── dashboard.php
-│   ├── news.php
-│   ├── add_news.php
-│   ├── edit_news.php
-│   ├── settings.php
-│   ├── polls.php
-│   └── poll_vote.php
+│   ├── login.php          # Login (senha: 132004)
+│   ├── dashboard.php      # Dashboard c/ botão atualizar
+│   ├── news.php           # Lista de notícias
+│   ├── add_news.php       # Adicionar notícia manual
+│   ├── edit_news.php      # Editar notícia
+│   ├── settings.php       # Configurações do site
+│   ├── polls.php          # Gerenciar enquetes
+│   └── poll_vote.php      # API de votação
 ├── public/
-│   ├── css/style.css
-│   └── uploads/
+│   ├── css/style.css      # Estilos completos
+│   └── uploads/           # Uploads futuros
 ├── data/
-│   └── portal.db          # Banco SQLite
-├── index.php              # Página principal
-├── update_feeds.php       # Script de atualização
-└── cron_update.sh         # Script cron
+│   └── portal.db          # Banco SQLite (auto-criado)
+├── index.php              # Página principal em grade
+├── update_feeds.php       # Script de atualização CLI
+└── cron_update.sh         # Script cron horário
 ```
+
+## 🎯 Destaques
+
+- **Imagens em todas as notícias**: Sistema inteligente extrai imagens de múltiplos formatos RSS
+- **Grade responsiva**: Cards se adaptam a qualquer tamanho de tela
+- **Placeholder elegante**: Ícone 📰 aparece quando não há imagem
+- **Lazy loading**: Imagens carregam sob demanda para melhor performance
+- **Segurança**: Links externos com `rel="noopener"`
 
 ## 🛠️ Tecnologias
 
 - PHP 7.4+
 - SQLite
-- HTML5/CSS3
+- HTML5/CSS3 (Grid, Flexbox)
 - JavaScript (vanilla)
 
 ## 📝 Licença

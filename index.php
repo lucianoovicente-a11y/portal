@@ -59,15 +59,17 @@ if (empty($news) && !isset($_GET['skip_update'])) {
             <div class="news-grid">
                 <?php foreach ($news as $item): ?>
                     <article class="news-card">
-                        <?php if ($item['image']): ?>
+                        <?php if (!empty($item['image'])): ?>
                             <div class="news-image">
-                                <img src="<?= htmlspecialchars($item['image']) ?>" alt="<?= htmlspecialchars($item['title']) ?>" onerror="this.style.display='none'">
+                                <img src="<?= htmlspecialchars($item['image']) ?>" alt="<?= htmlspecialchars($item['title']) ?>" loading="lazy" onerror="this.parentElement.classList.add('no-image'); this.style.display='none'; this.parentElement.innerHTML='📰'">
                             </div>
+                        <?php else: ?>
+                            <div class="news-image no-image">📰</div>
                         <?php endif; ?>
                         <div class="news-content">
                             <span class="news-category"><?= CATEGORIES[$item['category']] ?? $item['category'] ?></span>
-                            <h3><a href="<?= htmlspecialchars($item['link']) ?>" target="_blank"><?= htmlspecialchars($item['title']) ?></a></h3>
-                            <p class="news-description"><?= htmlspecialchars(substr($item['description'], 0, 150)) ?>...</p>
+                            <h3><a href="<?= htmlspecialchars($item['link']) ?>" target="_blank" rel="noopener"><?= htmlspecialchars($item['title']) ?></a></h3>
+                            <p class="news-description"><?= htmlspecialchars(substr(strip_tags($item['description']), 0, 150)) ?>...</p>
                             <div class="news-meta">
                                 <span class="news-source"><?= htmlspecialchars($item['source']) ?></span>
                                 <span class="news-date"><?= date('d/m/Y H:i', strtotime($item['published_at'])) ?></span>

@@ -70,18 +70,71 @@ class FeedService {
     }
     
     private function extractImage($item) {
+        // Tenta encontrar imagem em vários formatos RSS
+        // 1. Media RSS thumbnail
         if (isset($item->children('http://search.yahoo.com/mrss/')->thumbnail)) {
             $media = $item->children('http://search.yahoo.com/mrss/');
-            if (isset($media->thumbnail->attributes()['url'])) return (string)$media->thumbnail->attributes()['url'];
+            if (isset($media->thumbnail->attributes()['url'])) {
+                return (string)$media->thumbnail->attributes()['url'];
+            }
         }
+        
+        // 2. Media RSS content
+        if (isset($item->children('http://search.yahoo.com/mrss/')->content)) {
+            $media = $item->children('http://search.yahoo.com/mrss/');
+            if (isset($media->content->attributes()['url'])) {
+                return (string)$media->content->attributes()['url'];
+            }
+        }
+        
+        // 3. Enclosure
         if (isset($item->enclosure)) {
             $attrs = $item->enclosure->attributes();
             if (isset($attrs['type']) && strpos((string)$attrs['type'], 'image') !== false && isset($attrs['url'])) {
                 return (string)$attrs['url'];
             }
+            // Alguns feeds não têm type mas têm url de imagem
+            if (isset($attrs['url'])) {
+                $url = (string)$attrs['url'];
+                if (preg_match('/\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i', $url)) {
+                    return $url;
+                }
+            }
         }
-        $content = $this->getStringValue($item, 'content') ?? $this->getStringValue($item, 'description');
-        if ($content && preg_match('/<img[^>]+src="([^"]+)"/i', $content, $matches)) return $matches[1];
+        
+        // 4. Imagem no conteúdo/descrição
+        $content = $this->getStringValue($item, 'content') ?? $this->getStringValue($item, 'description') ?? '';
+        if ($content) {
+            // Tenta encontrar img tag
+            if (preg_match('/<img[^>]+src="([^"]+)"/i', $content, $matches)) {
+                return $matches[1];
+            }
+            // Tenta encontrar figura em data-uri ou outros formatos
+            if (preg_match('/<figure[^>]*>.*?<img[^>]+src="([^"]+)"/is', $content, $matches)) {
+                return $matches[1];
+            }
+        }
+        
+        // 5. Elemento image direto no item (alguns feeds usam)
+        if (isset($item->image)) {
+            return (string)$item->image;
+        }
+        
+        // 6. Tenta encontrar no children de outros namespaces comuns
+        $namespaces = $item->getNamespaces(true);
+        foreach ($namespaces as $prefix => $ns) {
+            if (strpos($ns, 'media') !== false || strpos($ns, 'mrss') !== false) {
+                $children = $item->children($ns);
+                if (isset($children->thumbnail) && isset($children->thumbnail->attributes()['url'])) {
+                    return (string)$children->thumbnail->attributes()['url'];
+                }
+                if (isset($children->content) && isset($children->content->attributes()['url'])) {
+                    return (string)$children->content->attributes()['url'];
+                }
+            }
+        }
+        
+        // Retorna string vazia se não encontrar imagem
         return '';
     }
 }
